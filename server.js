@@ -11,15 +11,13 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-const openai = new OpenAIApi(configuration);
-
 app.post("/ask", async (req, res) => {
   const products = req.body.products;
   if (!products || !products.length) {
     return res.status(400).json({ error: "No products provided." });
   }
 
-const prompt = `Compare these products and suggest which one is the best value and why. Provide clear but short advice.
+  const prompt = `Compare these products and suggest which one is the best value and why. Provide clear but short advice.
 
 ${products
   .map((p, i) =>
@@ -30,13 +28,13 @@ Description: ${p.description || "No description"}`
   ).join("\n\n")}`;
 
   try {
-    const response = await openai.createChatCompletion({
+    const response = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
     });
 
-    res.json({ answer: response.data.choices[0].message.content.trim() });
+    res.json({ answer: response.choices[0].message.content.trim() });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "OpenAI API error" });

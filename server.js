@@ -28,8 +28,6 @@ Price: $${p.price}
 Description: ${p.description || "No description"}`
   ).join("\n\n")}`;
 
-
-
   try {
     const response = await openai.createChatCompletion({
       model: "gpt-4",

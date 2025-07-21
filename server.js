@@ -18,10 +18,17 @@ app.post("/ask", async (req, res) => {
     return res.status(400).json({ error: "No products provided." });
   }
 
-  const prompt = `Compare these products and suggest which one is the best value and why. Provide clear but short advice.\n\n${products
-    .map((p, i) =>
-      \`Product \${i + 1}:\nTitle: \${p.title}\nPrice: $\${p.price}\nDescription: \${p.description || "No description"}\`
-    ).join("\n\n")}`;
+const prompt = `Compare these products and suggest which one is the best value and why. Provide clear but short advice.
+
+${products
+  .map((p, i) =>
+    `Product ${i + 1}:
+Title: ${p.title}
+Price: $${p.price}
+Description: ${p.description || "No description"}`
+  ).join("\n\n")}`;
+
+
 
   try {
     const response = await openai.createChatCompletion({

@@ -1,3 +1,4 @@
+
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -17,15 +18,16 @@ app.post("/ask", async (req, res) => {
     return res.status(400).json({ error: "No products provided." });
   }
 
-  const prompt = `Compare these products and suggest which one is the best value and why. Provide clear but short advice.
+  // 🎯 Smarter, short-and-punchy AI prompt
+  const prompt = `You're an expert online shopping assistant. Compare the following products and pick the best one based on value, features, and usefulness. Focus on practicality and be concise. End with a short recommendation.
 
-${products
-  .map((p, i) =>
-    `Product ${i + 1}:
+${products.map((p, i) =>
+  `Product ${i + 1}:
 Title: ${p.title}
 Price: $${p.price}
-Description: ${p.description || "No description"}`
-  ).join("\n\n")}`;
+Description: ${p.description || "No description"}`).join("\n\n")}
+
+Give a clear, short answer in 2-3 sentences.`;
 
   try {
     const response = await openai.chat.completions.create({

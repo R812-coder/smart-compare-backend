@@ -75,6 +75,38 @@ Output just the one-line tag:`;
 });
 
 app.get("/", (req, res) => res.send("Smart Compare AI Backend is running!"));
+app.post("/proscons", async (req, res) => {
+  const product = req.body.product;
+  if (!product) return res.status(400).json({ error: "No product provided." });
+
+  const prompt = `Give 2 pros and 2 cons for the following product based on its description. Be concise and useful.
+
+Title: ${product.title}
+Price: $${product.price}
+Description: ${product.description}
+
+Respond in this format:
+Pros:
+- ...
+- ...
+Cons:
+- ...
+- ...`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+    });
+
+    const summary = response.choices[0].message.content.trim();
+    res.json({ summary });
+  } catch (err) {
+    console.error("Pros/Cons fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch pros and cons." });
+  }
+});
 
 app.listen(3000, () => console.log("✅ Server running on port 3000"));
 app.post("/summary", async (req, res) => {

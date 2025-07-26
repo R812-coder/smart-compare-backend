@@ -149,3 +149,31 @@ app.listen(3000, () => {
   console.log("✅ Server running on port 3000");
 });
 
+// --- STRIPE WEBHOOK ---
+import bodyParserRaw from "body-parser";
+
+app.post("/webhook", bodyParserRaw({ type: 'application/json' }), (req, res) => {
+  const sig = req.headers['stripe-signature'];
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error("Webhook signature error:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // ✅ Handle successful subscription
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const email = session.customer_details.email;
+    console.log(`✅ New premium user: ${email}`);
+    // TODO: Save email to database or file
+  }
+
+  res.status(200).send("Received webhook");
+});

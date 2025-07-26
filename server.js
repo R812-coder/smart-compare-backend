@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { config } from "dotenv";
 import Stripe from "stripe";
 import OpenAI from "openai";
 

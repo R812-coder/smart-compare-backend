@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Success</title>
+    <script>
+      chrome.runtime.sendMessage({ type: "markPremium" });
+      setTimeout(() => {
+        window.location.href = "chrome-extension://__EXTENSION_ID__/popup.html";
+      }, 500);
+    </script>
+  </head>
+  <body>
+    <p>✅ Payment successful! Redirecting you back to Smart Compare AI...</p>
+  </body>
+</html>

@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Success</title>
-  </head>
-  <body>
-    <h2>🎉 Payment Successful!</h2>
-    <p>Your premium access is now active.</p>
-    <script>
-      chrome.runtime.sendMessage({ type: "markPremium" });
-      window.close(); // Optional: auto-close the tab
-    </script>
-  </body>
+<head>
+  <title>Success</title>
+  <script>
+    // ✅ Mark user as premium in Chrome storage
+    chrome.runtime.sendMessage({ type: "markPremium" });
+
+    // ✅ Optional: auto-close the tab
+    setTimeout(() => window.close(), 1500);
+  </script>
+</head>
+<body>
+  <h2>🎉 Payment Successful!</h2>
+  <p>Your premium access is now active.</p>
+</body>
 </html>

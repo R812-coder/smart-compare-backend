@@ -14,6 +14,8 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());
+// ✅ Serve static files like success.html and cancel.html from the "public" folder
+app.use(express.static("public"));
 
 // --- AI SUGGESTION ---
 app.post("/ask", async (req, res) => {

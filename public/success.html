@@ -2,16 +2,26 @@
 <html>
 <head>
   <title>Success</title>
-  <script>
-    // ✅ Mark user as premium in Chrome storage
-    chrome.runtime.sendMessage({ type: "markPremium" });
-
-    // ✅ Optional: auto-close the tab
-    setTimeout(() => window.close(), 1500);
-  </script>
+  <style>
+    body {
+      text-align: center;
+      font-family: sans-serif;
+      padding: 2em;
+    }
+    a {
+      display: inline-block;
+      margin-top: 20px;
+      text-decoration: none;
+      color: #fff;
+      background-color: #007bff;
+      padding: 10px 20px;
+      border-radius: 6px;
+    }
+  </style>
 </head>
 <body>
   <h2>🎉 Payment Successful!</h2>
-  <p>Your premium access is now active.</p>
+  <p>You're now a premium user. Please return to the extension.</p>
+  <a href="chrome-extension://acknpiflcjmffkllfhgjpgccalceklpj">Open Extension</a>
 </body>
 </html>

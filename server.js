@@ -160,7 +160,8 @@ app.post("/webhook", bodyParserRaw({ type: 'application/json' }), (req, res) => 
     event = stripe.webhooks.constructEvent(
       req.body,
       sig,
-      process.env.STRIPE_WEBHOOK_SECRET
+      const endpointSecret = "whsec_YvXsP84LtH9fbbVFmeMyuKQeM1oiCjgi";
+
     );
   } catch (err) {
     console.error("Webhook signature error:", err.message);

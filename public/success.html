@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Success</title>
+  </head>
+  <body>
+    <h2>🎉 Payment Successful!</h2>
+    <p>Your premium access is now active.</p>
+    <script>
+      chrome.runtime.sendMessage({ type: "markPremium" });
+      window.close(); // Optional: auto-close the tab
+    </script>
+  </body>
+</html>

@@ -121,8 +121,8 @@ app.post("/create-checkout-session", async (req, res) => {
           quantity: 1,
         },
       ],
-      success_url: "https://your-extension.com/success",
-      cancel_url: "https://your-extension.com/cancel",
+      success_url: "https://smart-compare-backend.onrender.com/success.html",
+      cancel_url: "https://smart-compare-backend.onrender.com/cancel.html",
     });
 
     res.json({ url: session.url });

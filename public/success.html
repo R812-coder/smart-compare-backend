@@ -1,31 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Success</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 2em;
-      text-align: center;
-    }
-    a {
-      display: inline-block;
-      margin-top: 20px;
-      background: #007bff;
-      color: #fff;
-      padding: 10px 20px;
-      text-decoration: none;
-      border-radius: 6px;
-    }
-  </style>
+  <title>Redirecting...</title>
+  <script>
+    // ✅ After Stripe redirect, go back to extension and mark premium
+    window.location.href = "chrome-extension://acknpiflcjmffkllfhgjpgccalceklpj/popup.html?upgraded=true";
+  </script>
 </head>
 <body>
-  <h2>🎉 Payment Successful!</h2>
-  <p>Your premium access is now active.</p>
-  <p>Please return to the extension or click below:</p>
-  <a href="chrome-extension://acknpiflcjmffkllfhgjpgccalceklpj/popup.html">Open Extension</a>
-  <script>
-    chrome.runtime.sendMessage({ type: "markPremium" });
-  </script>
+  <p>Redirecting back to extension...</p>
 </body>
 </html>

@@ -1,9 +1,9 @@
-import { config } from "dotenv";
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import Stripe from "stripe";
 import OpenAI from "openai";
+import { config } from "dotenv";
 
 config(); // Load environment variables
 

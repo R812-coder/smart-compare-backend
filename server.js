@@ -26,6 +26,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const collections = client.db().collection("collections");
 const priceSnaps = client.db().collection("price_snapshots");
+const reviews = client.db().collection("review_cache");
+const data = JSON.parse(response.choices[0].message.content);
+res.json(data);
+
 
 
 
@@ -102,7 +106,13 @@ app.post("/insight", async (req, res) => {
   if (!product?.title || !product?.price || !product?.description)
     return res.status(400).json({ error: "Incomplete product data." });
 
-  const prompt = `You're a shopping assistant …`; // fill in as desired
+  const prompt = `You are an e‑commerce assistant. Return ONE short tag (max 4 words) that highlights a notable advantage over similar products, e.g. "£20 Cheaper" or "Ergonomic Design". Use 3‑4 words max. ONLY return the tag, no extra text.
+
+Product:
+Title: ${product.title}
+Price: $${product.price}
+Description: ${product.description || "N/A"}`;
+
 
   try {
     const response = await openai.chat.completions.create({
@@ -121,7 +131,19 @@ app.post("/proscons", async (req, res) => {
   const { product } = req.body;
   if (!product) return res.status(400).json({ error: "No product provided." });
 
-  const prompt = `Give 2 pros and 2 cons …`; // fill in
+  const prompt = `
+Summarize buyer sentiment for the following product.
+
+Return JSON with two keys exactly:
+pros: array[2] of short phrases
+cons: array[2] of short phrases
+
+Product title: ${product.title}
+Key description: ${product.description || "N/A"}
+Reviews snippet:
+${product.reviews || "N/A"}
+`;
+
 
   try {
     const response = await openai.chat.completions.create({
@@ -150,6 +172,39 @@ app.get("/price-delta", async (req, res) => {
   const prevPrice = last[0]?.price ?? priceNow;
   const delta = (priceNow - prevPrice).toFixed(2);
   res.json({ prevPrice, delta });
+});
+app.post("/review-analyze", async (req, res) => {
+  const { asin, html } = req.body;          // html = raw reviews HTML (scraped by content.js)
+  if (!asin || !html) return res.status(400).json({ error: "asin & html required" });
+
+  // cache hit?
+  const cached = await reviews.findOne({ _id: asin });
+  if (cached) return res.json(cached.data);
+
+  const prompt = `
+Extract EXACTLY:
+1) trustScore (0‑100; higher = more genuine)
+2) topPros (array of 2 short phrases)
+3) topCons (array of 2 short phrases)
+4) summary (max 20 words)
+You have raw HTML of Amazon reviews below.
+Return JSON ONLY.
+
+### REVIEWS HTML
+${html.slice(0, 12000)}   <!-- cap to 12k chars to fit GPT good window -->
+`;
+
+  const gpt = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.2
+  });
+
+  const data = JSON.parse(gpt.choices[0].message.content);
+  // save
+  await reviews.insertOne({ _id: asin, data, ts: new Date() });
+
+  res.json(data);
 });
 
 // ---------- Stripe checkout ----------

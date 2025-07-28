@@ -150,31 +150,26 @@ app.listen(3000, () => {
 });
 
 // --- STRIPE WEBHOOK ---
-import bodyParserRaw from "body-parser";
 
-app.post("/webhook", bodyParserRaw({ type: 'application/json' }), (req, res) => {
-  const sig = req.headers['stripe-signature'];
+
+app.post("/webhook", bodyParser.raw({ type: "application/json" }), (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET; // store this securely in Render
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      const endpointSecret = "whsec_YvXsP84LtH9fbbVFmeMyuKQeM1oiCjgi";
-
-    );
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
-    console.error("Webhook signature error:", err.message);
+    console.error("Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // ✅ Handle successful subscription
-  if (event.type === 'checkout.session.completed') {
+  if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-    const email = session.customer_details.email;
-    console.log(`✅ New premium user: ${email}`);
-    // TODO: Save email to database or file
+    const email = session.customer_details?.email || session.customer_email;
+    console.log("🎯 New premium user email:", email);
+    // TODO: Save to DB
   }
 
-  res.status(200).send("Received webhook");
+  res.sendStatus(200);
 });

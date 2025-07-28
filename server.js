@@ -24,6 +24,10 @@ const users = client.db().collection("users");
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
+const collections = client.db().collection("collections");
+const priceSnaps = client.db().collection("price_snapshots");
+
+
 
 // ---------- Static assets ----------
 app.use(express.static(path.join(__dirname, "public")));
@@ -131,6 +135,22 @@ app.post("/proscons", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch pros and cons." });
   }
 });
+app.post("/price-snapshot", async (req, res) => {
+  const { asin, price } = req.body;
+  if (!asin || typeof price !== "number") return res.status(400).json({ error: "asin & price required" });
+
+  await priceSnaps.insertOne({ asin, price, ts: new Date() });
+  res.json({ saved: true });
+});
+app.get("/price-delta", async (req, res) => {
+  const { asin, priceNow } = req.query;
+  if (!asin || !priceNow) return res.status(400).json({ error: "asin & priceNow required" });
+
+  const last = await priceSnaps.find({ asin }).sort({ ts: -1 }).limit(1).toArray();
+  const prevPrice = last[0]?.price ?? priceNow;
+  const delta = (priceNow - prevPrice).toFixed(2);
+  res.json({ prevPrice, delta });
+});
 
 // ---------- Stripe checkout ----------
 app.post("/create-checkout-session", async (req, res) => {
@@ -161,4 +181,14 @@ app.get("/user-status", async (req, res) => {
 app.get("/", (_req, res) => res.send("Smart Compare AI backend is running!"));
 
 // ---------- Start server ----------
+app.post("/save-collection", async (req, res) => {
+  const { email, products } = req.body;
+  if (!email || !products?.length)
+    return res.status(400).json({ error: "Missing email or products" });
+
+  const doc = { email, products, createdAt: new Date() };
+  const result = await collections.insertOne(doc);
+  res.json({ success: true, id: result.insertedId });
+});
+
 app.listen(3000, () => console.log("✅  Server running on port 3000"));

@@ -27,7 +27,7 @@ const __dirname  = path.dirname(__filename);
 const collections = client.db().collection("collections");
 const priceSnaps = client.db().collection("price_snapshots");
 const reviews = client.db().collection("review_cache");
-const data = JSON.parse(response.choices[0].message.content);
+const data = JSON.parse(gpt.choices[0].message.content);
 res.json(data);
 
 

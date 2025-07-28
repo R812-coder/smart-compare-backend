@@ -18,6 +18,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const client = new MongoClient(process.env.MONGO_URI);
 await client.connect();
+console.log("✅ Connected to MongoDB Atlas");
 const users = client.db().collection("users");
 
 const app = express();

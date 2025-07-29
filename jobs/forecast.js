@@ -47,5 +47,9 @@ Prices: ${JSON.stringify(series)}
     console.error("forecast fail", asin, e.message);
   }
 }
+if (data.prob >= 60) {
+  const users = await db.collection("users").find({ isPremium: true }).toArray();
+  // loop over users with that asin in any collection and push a browser notification
+}
 
 await client.close();

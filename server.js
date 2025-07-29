@@ -166,6 +166,14 @@ ${html.slice(0, 12000)}`;
   await reviews.insertOne({ _id: asin, data, ts: new Date() });
   res.json(data);
 });
+// --- get cached review intelligence ---
+app.get("/review-intel", async (req, res) => {
+  const { asin } = req.query;
+  if (!asin) return res.status(400).json({ error: "asin required" });
+  const cached = await reviews.findOne({ _id: asin });
+  if (!cached) return res.json({ trustScore: null });
+  res.json(cached.data);              // {trustScore, summary, topPros, topCons, ...}
+});
 
 /* -------- Cloud collections -------- */
 app.post("/save-collection", async (req, res) => {

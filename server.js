@@ -195,3 +195,15 @@ app.post("/create-checkout-session", async (_req, res) => {
 /* -------- Default & start -------- */
 app.get("/", (_req,res)=>res.send("Smart Compare AI backend running"));
 app.listen(3000, () => console.log("✅ Server on 3000"));
+// --- price forecast ---
+app.get("/price-forecast", async (req, res) => {
+  const { asin } = req.query;
+  if (!asin) return res.status(400).json({ error: "asin required" });
+
+  const doc = await db.collection("price_forecasts").findOne({ asin });
+  if (!doc) return res.json({ prob: null });
+
+  // send the last 7 points for spark‑line
+  const spark = doc.series.slice(-7).map(p => p.price);
+  res.json({ prob: doc.prob, delta7d: doc.delta7d, spark });
+});

@@ -12,7 +12,7 @@ import { config } from "dotenv";
 config();                                 // load .env
 
 /* ---------- Init ---------- */
-const stripe  = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2023‑10‑16" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY.trim());
 const openai  = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const client  = new MongoClient(process.env.MONGO_URI);
 await client.connect();

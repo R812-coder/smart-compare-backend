@@ -31,6 +31,58 @@ const __dirname  = path.dirname(__filename);
 /* ---------- Static ---------- */
 app.use(express.static(path.join(__dirname, "public")));
 
+/* ---------- CLOUD COLLECTIONS ---------- */
+
+/* Save / overwrite a board ------------------------------------
+   body: { email, name, products:[{asin,title,price,img}], _id? }
+---------------------------------------------------------------*/
+app.post("/collections", async (req, res) => {
+  try {
+    const { email, name, products, _id } = req.body;
+    if (!email || !name || !products?.length)
+      return res.status(400).json({ error: "Missing fields" });
+
+    const doc = { email, name, products, updatedAt: new Date(), createdAt: new Date() };
+    if (_id) {                    // overwrite (rename / re-save)
+      await collections.updateOne({ _id: new ObjectId(_id), email }, { $set: doc });
+      return res.json({ ok: true });
+    }
+    await collections.insertOne(doc);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "DB write failed" });
+  }
+});
+
+/* Get all boards for user ------------------------------------*/
+app.get("/collections", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: "email required" });
+    const list = await collections
+      .find({ email })
+      .project({ email: 0 })
+      .sort({ updatedAt: -1 })
+      .toArray();
+    res.json(list);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "DB read failed" });
+  }
+});
+
+/* Delete ------------------------------------------------------*/
+app.delete("/collections/:id", async (req, res) => {
+  try {
+    await collections.deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Delete failed" });
+  }
+});
+
 /* ---------- Stripe Webhook (raw) ---------- */
 app.post("/webhook", bodyParser.raw({ type: "application/json" }), async (req, res) => {
   try {
@@ -187,6 +239,9 @@ app.get("/get-collections", async (req, res) => {
   const data = await collections.find({ email: req.query.email }).sort({ createdAt: -1 }).toArray();
   res.json({ collections: data });
 });
+const collections = db.collection("collections");
+/* ensure idx for fast lookup */
+await collections.createIndex({ email: 1, createdAt: -1 });
 
 /* -------- Checkout helper -------- */
 app.post("/create-checkout-session", async (_req, res) => {
@@ -244,3 +299,4 @@ ${products.map(p => `• ${p.asin} – ${p.title} – $${p.price}`).join("\n")}
 });
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("✅  Server running on", PORT));
+

@@ -1,7 +1,14 @@
 services:
-  - type: web
-    name: smart-compare-backend
-    env: node
-    plan: free
-    buildCommand: "npm install"
-    startCommand: "node server.js"
+- type: web
+  name: smart-compare-backend
+  env: node
+  buildCommand: npm install
+  startCommand: node server.js
+
+jobs:
+- type: cron
+  name: nightly-forecast
+  env: node
+  schedule: "0 3 * * *"
+  buildCommand: npm install
+  startCommand: node jobs/forecast.js

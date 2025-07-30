@@ -11,42 +11,42 @@ import bodyParser from "body-parser";
 import { MongoClient, ObjectId } from "mongodb";
 import { config } from "dotenv";
 
-config();                                 // load .env
+config();                                           // load .env
 
 /* ---------- Init ---------- */
-const stripe  = new Stripe(process.env.STRIPE_SECRET_KEY.trim());
-const openai  = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const client  = new MongoClient(process.env.MONGO_URI);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY.trim());
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const client = new MongoClient(process.env.MONGO_URI);
 await client.connect();
 console.log("✅ Connected to MongoDB Atlas");
 
 const db          = client.db();
 const users       = db.collection("users");
 const collections = db.collection("collections");
-await collections.createIndex({ email: 1, createdAt: -1 });
 const priceSnaps  = db.collection("price_snapshots");
 const reviews     = db.collection("review_cache");
+const forecasts   = db.collection("price_forecasts");
 
-const app = express();
+await collections.createIndex({ email: 1, createdAt: -1 });
+await forecasts.createIndex({ asin: 1, createdAt: -1 });
+
+const app        = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
-/* ---------- Static assets ---------- */
+/* ---------- Static ---------- */
 app.use(express.static(path.join(__dirname, "public")));
 
-/* ---------- Global middleware (JSON & CORS) ---------- */
+/* ---------- Global middleware ---------- */
 app.use((req, res, next) => {
-  // Stripe needs the raw body for signature verification
-  if (req.originalUrl === "/webhook") return next();
+  if (req.originalUrl === "/webhook") return next();   // keep Stripe raw
   express.json()(req, res, next);
 });
 app.use(cors());
 
 /* ========================================================================
-   CLOUD COLLECTIONS
+   CLOUD COLLECTIONS
    ===================================================================== */
-
-/* Save (insert or overwrite) ------------------------------------------- */
 app.post("/collections", async (req, res) => {
   try {
     const { email, name, products, _id } = req.body;
@@ -55,21 +55,18 @@ app.post("/collections", async (req, res) => {
 
     const doc = { email, name, products, updatedAt: new Date(), createdAt: new Date() };
 
-    if (_id) {                           // overwrite existing board
+    if (_id) {
       await collections.updateOne({ _id: new ObjectId(_id), email }, { $set: doc });
       return res.json({ ok: true });
     }
-
-    await collections.insertOne(doc);    // new board
+    await collections.insertOne(doc);
     res.json({ ok: true });
-
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "DB write failed" });
   }
 });
 
-/* List all boards ------------------------------------------------------- */
 app.get("/collections", async (req, res) => {
   try {
     const { email } = req.query;
@@ -82,14 +79,12 @@ app.get("/collections", async (req, res) => {
       .toArray();
 
     res.json(list);
-
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "DB read failed" });
   }
 });
 
-/* Delete one board ------------------------------------------------------ */
 app.delete("/collections/:id", async (req, res) => {
   try {
     await collections.deleteOne({ _id: new ObjectId(req.params.id) });
@@ -101,7 +96,7 @@ app.delete("/collections/:id", async (req, res) => {
 });
 
 /* ========================================================================
-   STRIPE  —  webhook (raw body)
+   STRIPE  —  webhook
    ===================================================================== */
 app.post(
   "/webhook",
@@ -125,7 +120,6 @@ app.post(
         );
         console.log("💾 Premium stored for", email);
       }
-
       res.sendStatus(200);
     } catch (e) {
       console.error("Webhook verify fail:", e.message);
@@ -137,8 +131,6 @@ app.post(
 /* ========================================================================
    AI ROUTES
    ===================================================================== */
-
-/* --- Main comparison answer ------------------------------------------- */
 app.post("/ask", async (req, res) => {
   const products = req.body.products ?? [];
   if (!products.length) return res.status(400).json({ error: "No products" });
@@ -161,7 +153,6 @@ app.post("/ask", async (req, res) => {
   res.json({ answer: gpt.choices[0].message.content.trim() });
 });
 
-/* --- Short “advantage” tag -------------------------------------------- */
 app.post("/insight", async (req, res) => {
   const { product } = req.body;
   if (!product?.title) return res.status(400).json({ error: "product needed" });
@@ -183,7 +174,6 @@ Description:${product.description || "N/A"}`;
   res.json({ tag: gpt.choices[0].message.content.trim() });
 });
 
-/* --- Pros / Cons summary (JSON) --------------------------------------- */
 app.post("/proscons", async (req, res) => {
   const { product } = req.body;
   if (!product) return res.status(400).json({ error: "No product" });
@@ -203,6 +193,16 @@ Description:${product.description || "N/A"}
   });
 
   res.json(JSON.parse(gpt.choices[0].message.content));
+});
+
+/* --- price-drop forecast (latest) ------------------------------------- */
+app.get("/forecast/:asin", async (req, res) => {
+  const doc = await forecasts
+    .find({ asin: req.params.asin })
+    .sort({ createdAt: -1 })
+    .limit(1)
+    .toArray();
+  res.json(doc[0] || { probDrop: null });
 });
 
 /* ========================================================================
@@ -242,7 +242,7 @@ Extract JSON ONLY:
 HTML reviews:
 ${html.slice(0, 12000)}`;
 
-  const gpt  = await openai.chat.completions.create({
+  const gpt = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [{ role: "user", content: prompt }],
     temperature: 0.2
@@ -264,7 +264,7 @@ app.get("/review-intel", async (req, res) => {
 });
 
 /* ========================================================================
-   STRIPE – checkout helper
+   STRIPE  —  checkout helper
    ===================================================================== */
 app.post("/create-checkout-session", async (_req, res) => {
   const session = await stripe.checkout.sessions.create({
@@ -274,7 +274,6 @@ app.post("/create-checkout-session", async (_req, res) => {
     success_url: "https://smart-compare-backend.onrender.com/success.html",
     cancel_url:  "https://smart-compare-backend.onrender.com/cancel.html"
   });
-
   res.json({ url: session.url });
 });
 
@@ -305,12 +304,11 @@ ${products.map(p => `• ${p.asin} – ${p.title} – $${p.price}`).join("\n")}
     });
 
     let raw = gpt.choices[0].message.content.trim();
-    raw = raw.replace(/```(?:json)?|```/g, "").trim();   // remove ``` fences
+    raw = raw.replace(/```(?:json)?|```/g, "").trim();
     ranked = JSON.parse(raw);
-
   } catch (err) {
     console.error("Concierge JSON parse error:", err.message);
-    ranked = [...new Set(products.map(p => p.asin))];     // fallback: original order
+    ranked = [...new Set(products.map(p => p.asin))];
   }
 
   res.json({ ranked });

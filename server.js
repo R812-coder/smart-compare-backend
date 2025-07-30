@@ -216,20 +216,20 @@ app.get("/price-forecast", async (req, res) => {
   res.json({ prob: doc.prob, delta7d: doc.delta7d, spark });
 });
 
-/* ---------- AI Concierge ----------------------------------------- */
+/* ---------- AI Shopping Concierge -------------------------------- */
 app.post("/concierge", async (req, res) => {
   const { query, products = [] } = req.body;
   if (!query || !products.length) return res.status(400).json({ ranked: [] });
 
   const prompt = `
-You are a shopping concierge. Rank the following products BEST → WORST for the user request.
-Return ONLY a JSON array of the product ASINs in order.
+You are a shopping concierge. Rank these products BEST → WORST for the request below.
+Return ONLY a JSON array of ASINs in order.
 
 User request: "${query}"
 
 Products:
 ${products.map(p => `• ${p.asin} – ${p.title} – $${p.price}`).join("\n")}
-  `.trim();
+`.trim();
 
   try {
     const gpt = await openai.chat.completions.create({
@@ -240,7 +240,7 @@ ${products.map(p => `• ${p.asin} – ${p.title} – $${p.price}`).join("\n")}
     const ranked = JSON.parse(gpt.choices[0].message.content);
     res.json({ ranked });
   } catch (err) {
-    console.error("Concierge error:", err);
+    console.error("Concierge error:", err.message);
     res.status(500).json({ ranked: [] });
   }
 });

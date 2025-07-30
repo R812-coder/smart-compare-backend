@@ -60,6 +60,13 @@ app.post("/webhook",
 
 /* ---------- JSON / CORS ---------- */
 app.use(cors());
+// always include CORS even on errors
+app.use((err, _req, res, next) => {
+  if (!err) return next();
+  res.set("Access-Control-Allow-Origin", "*");
+  res.status(500).json({ error: err.message });
+});
+
 app.use(express.json());
 
 /* ---------- (existing AI / price / review routes … unchanged) ---------- */

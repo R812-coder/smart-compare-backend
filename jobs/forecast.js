@@ -12,6 +12,7 @@ const forecasts  = db.collection("price_forecasts");
 const openai     = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const asins = await snaps.distinct("asin");
+
 for (const asin of asins) {
   const series = await snaps
     .find({ asin })
@@ -20,18 +21,19 @@ for (const asin of asins) {
     .project({ price: 1, ts: 1 })
     .toArray();
 
-  if (series.length < 7) continue;              // not enough data
+  if (series.length < 7) continue;                // need history
 
-  const prices = series.map(p => p.price).reverse(); // chrono order
+  const prices = series.map(p => p.price).reverse();
 
   const prompt = `
 Historical daily prices: [${prices.join(", ")}]
 Give a JSON object ONLY like:
 {"probDrop":73,"dropAmt":18,"daysOut":4}
-where probDrop = % chance price drops ≥5 % within next 7 days.
+probDrop = chance price drops ≥5 % within next 7 days.
 `;
+
   try {
-    const gpt = await openai.chat.completions.create({
+    const gpt  = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2
@@ -48,4 +50,5 @@ where probDrop = % chance price drops ≥5 % within next 7 days.
     console.error("forecast fail", asin, err.message);
   }
 }
+
 await client.close();

@@ -199,14 +199,14 @@ app.post("/create-checkout-session", async (_req, res) => {
   });
   res.json({ url: session.url });
 });
-/* ---------- AI Shopping Concierge -------------------------------- */
+/* ---------- AI Shopping Concierge (robust) ----------------------- */
 app.post("/concierge", async (req, res) => {
   const { query, products = [] } = req.body;
-  if (!query || !products.length) return res.status(400).json({ ranked: [] });
+  if (!query || !products.length) return res.json({ ranked: [] });
 
   const prompt = `
 You are a shopping concierge. Rank these products BEST → WORST for the request below.
-Return ONLY a JSON array of ASINs in order.
+Return ONLY a JSON array of ASINs in order. No other text.
 
 User request: "${query}"
 
@@ -214,33 +214,31 @@ Products:
 ${products.map(p => `• ${p.asin} – ${p.title} – $${p.price}`).join("\n")}
 `.trim();
 
+  let ranked = [];
+
   try {
     const gpt = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3
     });
-    const ranked = JSON.parse(gpt.choices[0].message.content);
-    res.json({ ranked });
+
+    const raw = gpt.choices[0].message.content.trim();
+
+    try {
+      ranked = JSON.parse(raw);
+    } catch {
+      // fallback: pick all 10‑char tokens that look like ASINs
+      ranked = [...new Set(raw.match(/[A-Z0-9]{10}/g) || [])];
+      console.warn("Concierge JSON parse fallback used.");
+    }
   } catch (err) {
     console.error("Concierge error:", err.message);
-    res.status(500).json({ ranked: [] });
   }
+
+  // ultimate fallback = original order
+  if (!Array.isArray(ranked) || !ranked.length)
+    ranked = products.map(p => p.asin);
+
+  res.json({ ranked });
 });
-
-/* -------- Default & start -------- */
-app.get("/", (_req,res)=>res.send("Smart Compare AI backend running"));
-app.listen(3000, () => console.log("✅ Server on 3000"));
-// --- price forecast ---
-app.get("/price-forecast", async (req, res) => {
-  const { asin } = req.query;
-  if (!asin) return res.status(400).json({ error: "asin required" });
-
-  const doc = await db.collection("price_forecasts").findOne({ asin });
-  if (!doc) return res.json({ prob: null });
-
-  // send the last 7 points for spark‑line
-  const spark = doc.series.slice(-7).map(p => p.price);
-  res.json({ prob: doc.prob, delta7d: doc.delta7d, spark });
-});
-

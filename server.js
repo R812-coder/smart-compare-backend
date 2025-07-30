@@ -249,3 +249,41 @@ ${products.map(p => `• ${p.asin} – ${p.title} – $${p.price}`).join("\n")}
 const PORT = process.env.PORT || 3000;                     // 🔧 use Render port if given
 app.listen(PORT, () => console.log("✅  Server running on", PORT));
 
+import cron from "node-cron";
+import { MongoClient } from "mongodb";
+import OpenAI from "openai";
+import dotenv from "dotenv";
+dotenv.config();
+
+const db = (await new MongoClient(process.env.MONGO_URI).connect()).db();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+cron.schedule("0 3 * * *", async () => {           // every night UTC 03:00
+  const asins = await db.collection("price_snapshots").distinct("asin");
+  for (const asin of asins) {
+    const hist = await db.collection("price_snapshots")
+                         .find({ asin })
+                         .sort({ ts: -1 })
+                         .limit(30)
+                         .toArray();
+
+    const prompt = `
+Return JSON like {"prob":73,"spark":[199,195,189,180,175]}
+where prob = likelihood (%) that price drops ≥5 % within 7 days.
+
+Price history (newest→oldest): ${hist.map(h => h.price).join(",")}`;
+
+    const raw = (await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages:[{role:"user",content:prompt}], temperature:0.2
+    })).choices[0].message.content.replace(/```(?:json)?|```/g,"");
+
+    const data = JSON.parse(raw);
+    await db.collection("price_forecast").updateOne(
+      { _id: asin },
+      { $set: { ...data, ts: new Date() } },
+      { upsert: true }
+    );
+  }
+  console.log("✅ nightly price forecast done");
+});
